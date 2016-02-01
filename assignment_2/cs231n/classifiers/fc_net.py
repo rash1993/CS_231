@@ -181,25 +181,25 @@ class FullyConnectedNet(object):
     # parameters should be initialized to zero.                                #
     ############################################################################
     self.num_hidden_layer = len(hidden_dims)
-    dim1, dim2 = 0,0
     dim1 = input_dim
     for i,hidden_size in enumerate(hidden_dims):
-        tempw = "W"+str(i+1)
-        tempb = "b"+str(i+1)
-        dim2 = hidden_size
-        self.params[tempw] =  np.random.normal(0,weight_scale,(dim1,dim2))#choose better initialization scheme
-        self.params[tempb] =  np.zeros((dim2))
-        dim1 = dim2
+        self.params["W"+str(i+1)] =  np.random.normal(0,weight_scale,(dim1,hidden_size))#choose better initialization scheme
+        self.params["b"+str(i+1)] =  np.zeros((hidden_size))
+        dim1 = hidden_size
 
     self.params["W"+str(i+2)] = np.random.normal(0,weight_scale,(dim1,num_classes))
     self.params["b"+str(i+2)] = np.zeros((num_classes))
+    ############################################################################
+    ###############Initialize batch_norm parameters#############################
 
-    for i in range(1,self.num_hidden_layer+1):
-        self.params['gamma'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[0]))
-        self.params['beta'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[0]))
+    if self.use_batchnorm:
+        for i in range(1,self.num_hidden_layer+1):
+            self.params['gamma'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[1]))
+            self.params['beta'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[1]))
     # print hidden_dims
     for k in self.params:
         print k, self.params[k].shape
+
 
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -220,10 +220,10 @@ class FullyConnectedNet(object):
     # of the first batch normalization layer, self.bn_params[1] to the forward
     # pass of the second batch normalization layer, etc.
     self.bn_params = []
-    if self.use_batchnorm:
-      self.bn_params = [{'mode': 'train'} for i in xrange(self.num_layers - 1)]
-
+    if (True): #self.use_batchnorm
+        self.bn_params = [{'mode': 'train'} for i in xrange(self.num_layers - 1)]
     # Cast all parameters to the correct datatype
+
     for k, v in self.params.iteritems():
       self.params[k] = v.astype(dtype)
 
@@ -263,14 +263,19 @@ class FullyConnectedNet(object):
     store_cache = {}
     store_ouput = {}
     store_ouput['0'] = X
-    bn = self.use_batchnorm
+    use_batchnorm = self.use_batchnorm
+    # print type(self.bn_params)
     # self.params['W'+str(i)],self.params['b'+str(i)]
+    # print self.bn_params[0]
     for i in range(1,self.num_hidden_layer+1):
         w     = self.params['W'+str(i)]
         b     = self.params['b'+str(i)]
-        gamma = self.params['gamma'+str(i)]
-        beta  = self.params['beta'+str(i)]
-        store_ouput[str(i)], store_cache[str(i)] = affine_all_forward(store_ouput[str(i-1)],w,b,gamma,beta, bn_param,bn)
+        if use_batchnorm:
+            gamma = self.params['gamma'+str(i)]
+            beta  = self.params['beta'+str(i)]
+        else:
+            gamma, beta = 0,0
+        store_ouput[str(i)], store_cache[str(i)] = affine_all_forward(store_ouput[str(i-1)], w, b, gamma, beta, self.bn_params[i-1], use_batchnorm)
 
 
     scores, store_cache[str(i+1)] = affine_forward(store_ouput[str(i)],self.params['W'+str(i+1)],self.params['b'+str(i+1)])
@@ -291,6 +296,9 @@ class FullyConnectedNet(object):
     loss, dscores = softmax_loss(scores,y)
     for i in range(1,self.num_hidden_layer+2):
         loss += 0.5*self.reg*((self.params['W'+str(i)]**2).sum())
+    if use_batchnorm:
+        for i in range(1,self.num_hidden_layer+1):
+            loss += 0.5*self.reg*((self.params['gamma'+str(i)]**2).sum()+(self.params['beta'+str(i)]**2).sum())
     ############################################################################
     # TODO: Implement the backward pass for the fully-connected net. Store the #
     # loss in the loss variable and gradients in the grads dictionary. Compute #
@@ -306,24 +314,31 @@ class FullyConnectedNet(object):
     ############################################################################
     dout, grads['W'+str(self.num_layers)], grads['b'+str(self.num_layers)] = affine_backward(dscores,store_cache[str(self.num_layers)])
 
+    if use_batchnorm:
+        for i in range(self.num_hidden_layer,0,-1):
+            dout, grads['W'+str(i)], grads['b'+str(i)], grads['gamma'+str(i)], grads['beta'+str(i)] = affine_all_backward(dout, store_cache[str(i)], use_batchnorm)
+    else:
+        for i in range(self.num_hidden_layer,0,-1):
+            dout, grads['W'+str(i)], grads['b'+str(i)] = affine_all_backward(dout, store_cache[str(i)], use_batchnorm)
 
-
-
-    for i in range(self.num_hidden_layer,0,-1):
-        dout, grads['W'+str(i)], grads['b'+str(i)], grads['gamma'+str(i)], grads['beta'+str(i)] = affine_all_backward(dout, store_cache[str(i)])
 
     for i in range(1,self.num_hidden_layer+2):
         grads['W'+str(i)] += self.params['W'+str(i)]*self.reg
-        grads['b'+str(i)] += self.params['b'+str(i)]
-
+        # grads['b'+str(i)] += self.params['b'+str(i)]
+    if use_batchnorm:
+        for i in range(1,self.num_hidden_layer+1):
+            grads['gamma'+str(i)] += self.reg*self.params['gamma'+str(i)]
+            grads['beta'+str(i)]  += self.reg*self.params['beta'+str(i)]
     ############################################################################
-    #                             END OF YOUR CODE                             #
+    #                             END OF YOUR CODE                        #
     ############################################################################
-
     return loss, grads
 
 def affine_all_forward(x, w, b, gamma, beta, bn_param, use_batchnorm):
+
+  # print x.shape
   cache,cache_bnorm = (),()
+
   out, cache_affine = affine_forward(x,w,b)
 
   if use_batchnorm:
@@ -334,6 +349,8 @@ def affine_all_forward(x, w, b, gamma, beta, bn_param, use_batchnorm):
   return out, cache
 
 def affine_all_backward(dout, cache, use_batchnorm):
+  dgamma = []
+  dbeta = []
   cache_affine, cache_bnorm, cache_relu = cache
   dx = relu_backward(dout, cache_relu)
   if use_batchnorm:
@@ -344,26 +361,3 @@ def affine_all_backward(dout, cache, use_batchnorm):
     return dx, dw, db, dgamma, dbeta
   else:
     return dx, dw, db
-################################################################################
-    # def affine_all_forward(x,w,b, gamma,beta,bn_param,use_batchnorm):
-    #     cache,cache_bnorm = (),()
-    #     out, cache_affine = affine_forward(x,w,b)
-    #
-    #     if use_batchnorm:
-    #       out, cache_bnorm  = batchnorm_forward(out,gamma, beta, bn_param)
-    #
-    #     out, cache_relu   = relu_forward(out)
-    #     cache = (cache_affine, cache_bnorm, cache_relu)
-    #     return out, cache
-    #
-    # def affine_all_backward(dout, cache, use_batchnorm):
-    #     cache_affine, cache_bnorm, cache_relu = cache
-    #     dx = relu_backward(dout, cache_relu)
-    #     if use_batchnorm:
-    #         dx,dgamma,dbeta = batchnorm_backward_alt(dx, cache_bnorm)
-    #     dx,dw,db = affine_backward(dx, cache_affine)
-    #
-    #     if use_batchnorm:
-    #         return dx, dw, db, dgamma, dbeta
-    #     else:
-    #         return dx, dw, db

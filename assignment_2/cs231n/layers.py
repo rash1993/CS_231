@@ -92,7 +92,7 @@ def relu_forward(x):
   mask = x<0
   out[mask] = 0
   # print type(out)
-  
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -170,17 +170,18 @@ def batchnorm_forward(x, gamma, beta, bn_param):
   - out: of shape (N, D)
   - cache: A tuple of values needed in the backward pass
   """
+
+
   mode = bn_param['mode']
   eps = bn_param.get('eps', 1e-5)
   momentum = bn_param.get('momentum', 0.9)
 
   N, D = x.shape
-  running_mean = bn_param.get('running_mean', np.zeros(D, dtype=x.dtype))
-  running_var = bn_param.get('running_var', np.zeros(D, dtype=x.dtype))
+  running_mean = bn_param.get('running_mean', np.zeros(len(gamma), dtype=x.dtype))
+  running_var  = bn_param.get('running_var' , np.zeros(len(gamma), dtype=x.dtype))
 
   out, cache = None, None
-  if mode == 'train':
-    #############################################################################
+  #############################################################################
     # TODO: Implement the training-time forward pass for batch normalization.   #
     # Use minibatch statistics to compute the mean and variance, use these      #
     # statistics to normalize the incoming data, and scale and shift the        #
@@ -193,13 +194,22 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # the momentum variable to update the running mean and running variance,    #
     # storing your result in the running_mean and running_var variables.        #
     #############################################################################
+  if mode == 'train':
     mean = np.mean(x,axis=0)
     var  = np.var(x,0)
     std_dev = np.sqrt(var+eps)
     xi_cap = (x-mean)/std_dev
+    # print 'Here'
+    # # print x.shape
+    # # print gamma.shape
+    # # print xi_cap.shape
+    # # print beta.shape
+    # print running_mean.shape
+    # print mean.shape
+    # print 'there'
     out = gamma*xi_cap + beta
     running_mean =  running_mean*momentum + (1-momentum)*mean
-    running_var  =  running_var*momentum + (1-momentum)*var
+    running_var  =  running_var*momentum  + (1-momentum)*var
 
 
 
@@ -332,7 +342,8 @@ def dropout_forward(x, dropout_param):
     # TODO: Implement the training phase forward pass for inverted dropout.   #
     # Store the dropout mask in the mask variable.                            #
     ###########################################################################
-    pass
+    mask = np.random.rand(*(x.shape))>p
+    out = mask*x
     ###########################################################################
     #                            END OF YOUR CODE                             #
     ###########################################################################
@@ -340,7 +351,7 @@ def dropout_forward(x, dropout_param):
     ###########################################################################
     # TODO: Implement the test phase forward pass for inverted dropout.       #
     ###########################################################################
-    pass
+    out = x
     ###########################################################################
     #                            END OF YOUR CODE                             #
     ###########################################################################
@@ -361,13 +372,13 @@ def dropout_backward(dout, cache):
   """
   dropout_param, mask = cache
   mode = dropout_param['mode']
-
+  
   dx = None
   if mode == 'train':
     ###########################################################################
     # TODO: Implement the training phase backward pass for inverted dropout.  #
     ###########################################################################
-    pass
+    dx = mask*dout
     ###########################################################################
     #                            END OF YOUR CODE                             #
     ###########################################################################
