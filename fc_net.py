@@ -194,10 +194,8 @@ class FullyConnectedNet(object):
 
     if self.use_batchnorm:
         for i in range(1,self.num_hidden_layer+1):
-            # self.params['gamma'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[1]))
-            # self.params['beta'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[1]))
-            self.params['gamma'+str(i)] = np.ones((self.params["W"+str(i)].shape[1]))
-            self.params['beta'+str(i)] = np.zeros((self.params["W"+str(i)].shape[1]))
+            self.params['gamma'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[1]))
+            self.params['beta'+str(i)] = np.random.normal(0,weight_scale,(self.params["W"+str(i)].shape[1]))
     # print hidden_dims
     # for k in self.params:
         # print k, self.params[k].shape
