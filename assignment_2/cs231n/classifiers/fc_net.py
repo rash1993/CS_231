@@ -183,8 +183,8 @@ class FullyConnectedNet(object):
     self.num_hidden_layer = len(hidden_dims)
     dim1 = input_dim
     for i,hidden_size in enumerate(hidden_dims):
-        self.params["W"+str(i+1)] =  np.random.normal(0,weight_scale,(dim1,hidden_size))#choose better initialization scheme
-        self.params["b"+str(i+1)] =  np.zeros((hidden_size))
+        self.params["W"+str(i+1)] = np.random.normal(0,weight_scale,(dim1,hidden_size))#choose better initialization scheme
+        self.params["b"+str(i+1)] = np.zeros((hidden_size))
         dim1 = hidden_size
 
     self.params["W"+str(i+2)] = np.random.normal(0,weight_scale,(dim1,num_classes))
@@ -260,10 +260,11 @@ class FullyConnectedNet(object):
     # layer, etc.                                                              #
     ############################################################################
     # score1, cache1 = affine_relu_forward(X, self.params['W1'], self.params['b1'])
+
     if self.use_dropout>0:
         if y == None:
             scores = af_rl_dp(self, X, y, mode)
-            return scores*self.dropout_param
+            return scores*self.dropout_param['p']
         else:
             loss, grads = af_rl_dp(self, X, y, mode)
     elif self.use_batchnorm:
@@ -407,10 +408,10 @@ def af_rl_bn (self, X, y, mode):
     loss, dscores = softmax_loss(scores,y)
 
     for i in range(1,self.num_hidden_layer+2):
-        loss += 0.5*self.reg*((self.params['W'+str(i)]**2).sum())
+        loss += 0.5*self.reg*((self.params['W'+str(i)]*self.params['W'+str(i)]).sum())
 
-    for i in range(1,self.num_hidden_layer+1):
-        loss += 0.5*self.reg*((self.params['gamma'+str(i)]**2).sum()+(self.params['beta'+str(i)]**2).sum())
+    # for i in range(1,self.num_hidden_layer+1):
+        # loss += 0.5*self.reg*((self.params['gamma'+str(i)]**2).sum())#+(self.params['beta'+str(i)]**2).sum())
 
     ##########################Calculate the Grads###########################
     dout, grads['W'+str(self.num_layers)], grads['b'+str(self.num_layers)] = affine_backward (dscores,store_cache[str(self.num_layers)])
@@ -421,9 +422,9 @@ def af_rl_bn (self, X, y, mode):
     for i in range(1,self.num_hidden_layer+2):
         grads['W'+str(i)] += self.params['W'+str(i)]*self.reg
 
-    for i in range(1,self.num_hidden_layer+1):
-            grads['gamma'+str(i)] += self.reg*self.params['gamma'+str(i)]
-            grads['beta'+str(i)]  += self.reg*self.params['beta'+str(i)]
+    # for i in range(1,self.num_hidden_layer+1):
+            # grads['gamma'+str(i)] += self.reg*self.params['gamma'+str(i)]
+            #grads['beta'+str(i)]  += self.reg*self.params['beta'+str(i)]
     return loss, grads
 
 def af_rl_dp (self, X, y, mode):
