@@ -359,7 +359,7 @@ def af_rl(self, X, y, mode):
         b  = self.params['b'+str(i)]
         store_ouput[str(i)], store_cache[str(i)] = affine_relu_forward(store_ouput[str(i-1)], w, b)
 
-
+    
     scores, store_cache[str(i+1)] = affine_forward(store_ouput[str(i)],self.params['W'+str(i+1)],self.params['b'+str(i+1)])
 
     if y==None:
